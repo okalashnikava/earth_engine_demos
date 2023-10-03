@@ -5,16 +5,24 @@ import google.auth
 
 @functions_framework.http
 def write_to_bq(request):
-  
-  currentStartDate = request.form.get('currentStartDate')
-  currentEndDate = request.form.get('currentEndDate')
-
-  previousStartDate = request.form.get('previousStartDate')
-  previousEndDate = request.form.get('previousEndDate')
 
   # Set up auth.
   credentials, project_id = google.auth.default()
-  ee.Initialize(credentials, project="okalashnikava-experimental")
+  ee.Initialize(credentials, project=project_id)
+  
+  # Fetch the current time.
+  epoch = int(time.time_ns() / 1_000_000)
+  now = ee.Date(epoch)
+
+  # Define last two weeks
+  currentWeek = now.advance(-1, 'week').getRange('week')
+  previousWeek = currentWeek.start().advance(-1, 'week').getRange('week')
+  
+  currentStartDate = currentWeek.start().format('YYYY-MM-dd').getInfo()
+  currentEndDate = currentWeek.end().format('YYYY-MM-dd').getInfo()
+
+  previousStartDate = previousWeek.start().format('YYYY-MM-dd').getInfo()
+  previousEndDate = previousWeek.end().format('YYYY-MM-dd').getInfo()
 
   # The area of interest ("AOI") polygon, can also be imported or hand-drawn.
   aoi = ee.Geometry.Polygon(
@@ -62,3 +70,4 @@ def write_to_bq(request):
   )
 
   task.start()
+  return f"Started task {task.id}."
